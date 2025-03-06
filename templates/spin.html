@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucky Wheel</title>
+    <style>
+        body {
+            background: linear-gradient(to bottom, #87CEEB, #4682B4);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .pointer {
+            position: absolute;
+            top: -35px;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-bottom: 40px solid red;
+            transform: translateX(-50%) rotate(180deg);
+        }
+        #spinBtn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        #result {
+            margin-top: 10px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="pointer"></div>
+        <canvas id="wheelCanvas"></canvas>
+    </div>
+    <button id="spinBtn">Spin</button>
+    <div id="result">Result: -</div>
+
+    <script>
+        const canvas = document.getElementById("wheelCanvas");
+        const ctx = canvas.getContext("2d");
+        const spinBtn = document.getElementById("spinBtn");
+        const resultDiv = document.getElementById("result");
+
+        const sections = ["😢 Try Again", "😜 Next Time", "🌀 Just Spinning", "💨 Nothing Here", "😢 Hard Luck !", "🎉 $1 WINNER"];
+        const colors = ["#FF5733", "#33FF57", "#5733FF", "#FFD700", "#FF33A6", "#33FFF5"];
+
+        let angle = 0;
+        let spinning = false;
+
+        function drawWheel() {
+            const radius = canvas.width / 2;
+            const centerX = radius;
+            const centerY = radius;
+            const sliceAngle = (2 * Math.PI) / sections.length;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < sections.length; i++) {
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(
+                    centerX, centerY, radius,
+                    sliceAngle * i + angle - Math.PI/2,
+                    sliceAngle * (i + 1) + angle - Math.PI/2
+                );
+                ctx.closePath();
+                ctx.fillStyle = colors[i];
+                ctx.fill();
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(sliceAngle * i + sliceAngle / 2 + angle - Math.PI/2);
+                ctx.fillStyle = "black";
+                ctx.font = "bold 14px Arial";
+                ctx.textAlign = "right";
+                ctx.fillText(sections[i], radius - 10, 5);
+                ctx.restore();
+            }
+        }
+
+        function spinWheel() {
+            if (spinning) return;
+            spinning = true;
+
+            let spins = Math.floor(Math.random() * 10) + 10; 
+            let finalAngle = Math.random() * (2 * Math.PI);
+
+            let totalRotation = spins * (2 * Math.PI) + finalAngle;
+            let duration = 3000; 
+            let startTime = null;
+
+            function animate(currentTime) {
+                if (!startTime) startTime = currentTime;
+                let elapsed = currentTime - startTime;
+
+                if (elapsed < duration) {
+                    let progress = elapsed / duration;
+                    let easeOut = 1 - Math.pow(1 - progress, 3); 
+                    angle = totalRotation * easeOut;
+                    drawWheel();
+                    requestAnimationFrame(animate);
+                } else {
+                    angle = totalRotation % (2 * Math.PI);
+                    drawWheel();
+                    spinning = false;
+                    showResult();
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        function showResult() {
+            const sliceAngle = (2 * Math.PI) / sections.length;
+            let index = Math.floor(((2 * Math.PI - angle) % (2 * Math.PI)) / sliceAngle);
+            let resultText = sections[index];
+
+            resultDiv.textContent = "Result: " + resultText;
+
+            // إرسال النتيجة إلى Flask
+            fetch("/spin_result", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    user_id: "{{ user_id }}", // لازم البوت يبعت الـ user_id عند فتح الصفحة
+                    result: resultText
+                })
+            });
+        }
+
+        canvas.width = 300;
+        canvas.height = 300;
+        drawWheel();
+
+        spinBtn.addEventListener("click", spinWheel);
+    </script>
+
+</body>
+</html>
