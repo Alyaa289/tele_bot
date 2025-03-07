@@ -12,7 +12,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
 
-# 🟢 أدخلي توكن البوت هنا
+# edit token
 BOT_TOKEN = "7640335931:AAE8yJTumsFf93hrewYehNT-lAfyufHEYT4"
 
 
