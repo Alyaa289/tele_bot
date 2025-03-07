@@ -7,10 +7,11 @@ app = Flask(__name__)
 # إعداد قاعدة البيانات
 
 db_config = {
-    "host": "localhost",
-    "user": "alya",
-    "password": "mumdad2002",
-    "database": "lucky_wheel_bot"
+    "host": "centerbeam.proxy.rlwy.net",
+    "user": "root",
+    "password": "dxQBNrjTXzObfDNhuVoHgyNbsaeDsmmr", 
+    "database": "railway",
+    "port": 23305 
 }
 
 # إعداد البوت

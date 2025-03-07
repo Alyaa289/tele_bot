@@ -15,19 +15,30 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 # 🟢 أدخلي توكن البوت هنا
 BOT_TOKEN = "7640335931:AAE8yJTumsFf93hrewYehNT-lAfyufHEYT4"
 
+
+
+
 # 🟢 إعداد الاتصال بقاعدة البيانات
+
 db = {
-    "host": "localhost",
-    "user": "alya",
-    "password": "mumdad2002",
-    "database": "lucky_wheel_bot"
+    "host": "centerbeam.proxy.rlwy.net",
+    "user": "root",
+    "password": "dxQBNrjTXzObfDNhuVoHgyNbsaeDsmmr",  # استبدليها بكلمة المرور الصحيحة
+    "database": "railway",
+    "port": 23305  # هنا تكتبين البورت الصحيح
 }
 
+
+
 bot = telebot.TeleBot(BOT_TOKEN)
+
+
 
 # 🟢 دالة لإنشاء اتصال بقاعدة البيانات عند الحاجة
 def connect_db():
     return mysql.connector.connect(**db)
+
+
 
 # 🟢 دالة `/start`
 @bot.message_handler(commands=['start'])
@@ -60,19 +71,29 @@ def send_welcome(message):
         conn.commit()  # ✅ حفظ التغييرات
 
         if referred_by:
-            cursor.execute("UPDATE users SET daily_referrals = daily_referrals + 1 WHERE user_id = %s", (referred_by,))
+            # 🟢 تحديث عدد الدعوات
+            cursor.execute("UPDATE users SET invites_count = invites_count + 1 WHERE user_id = %s", (referred_by,))
             conn.commit()
 
-            cursor.execute("SELECT daily_referrals FROM users WHERE user_id = %s", (referred_by,))
+            # 🟢 جلب عدد الدعوات بعد التحديث
+            cursor.execute("SELECT invites_count FROM users WHERE user_id = %s", (referred_by,))
             referrals = cursor.fetchone()[0]
+
+            # ✅ إرسال رسالة للشخص الذي قام بالدعوة
+            remaining = max(15 - referrals, 0)  # لضمان عدم ظهور رقم سالب
+            bot.send_message(referred_by, f"📢 You've invited {referrals} friends!\n"
+                                          f"🎯 You need {remaining} more invites to get an extra spin! 🎰")
+
+            # ✅ التحقق مما إذا وصل إلى 15 دعوة
             if referrals == 15:
                 cursor.execute("UPDATE users SET spins_remaining = spins_remaining + 1 WHERE user_id = %s", (referred_by,))
                 conn.commit()
-                bot.send_message(referred_by, "🎉 You've invited 15 friends! You got an extra spin for today! 🎰")
+                bot.send_message(referred_by, "🎉 You've invited 15 friends! You got an extra spin! 🎰")
 
     # 🟢 3. إغلاق الاتصال بعد الاستخدام
     cursor.close()
     conn.close()
+
 
     # إرسال رسالة الترحيب
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -157,16 +178,21 @@ scheduler_thread.start()
 # 🟢 دعوة الأصدقاء
 @bot.message_handler(func=lambda message: message.text == "🎟️ Invite Friends")
 def invite_friends(message):
-    #يرجع للمنيو 
+    user_id = message.chat.id
+
+    # إنشاء رابط الدعوة بناءً على user_id
+    invite_link = f"https://t.me/{bot.get_me().username}?start={user_id}"
+
+    # أزرار الرجوع للمنيو
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row("🎰 Play", "📊 Show Balance")
     markup.row("🎟️ Invite Friends", "💰 Withdraw")
-    user_id = message.chat.id
-    invite_link = f"https://t.me/{bot.get_me().username}?start={user_id}"
+
     bot.send_message(user_id, f"📢 Share this link with your friends!\n\n"
                               f"🔗 {invite_link}\n\n"
                               f"Invite 15 friends and get an extra spin for today! 🎰",
-                              reply_markup=markup)
+                     reply_markup=markup)
+
 
 
 
@@ -174,18 +200,21 @@ def invite_friends(message):
     # 🟢 تعريف الاتصال بقاعدة البيانات - تمت إزالة التكرار
 def connect_db():
     return mysql.connector.connect(**db)
- # 🟢 التحقق من اشتراك المستخدم في القناة
+# 🟢 التحقق من اشتراك المستخدم في القناة
+
 def is_subscribed(user_id):
     chat_id = "-1002342830576"  # Channel ID
     try:
         chat_member = bot.get_chat_member(chat_id, user_id)
+        print(f"✅ User {user_id} status: {chat_member.status}")  # طباعة الحالة للمساعدة في التصحيح
         return chat_member.status in ["member", "administrator", "creator"]
     except Exception as e:
-        print("❌ Error:", e)
-        return False  # إذا حدث خطأ، نعتبر المستخدم غير مشترك
+        print(f"❌ Error checking subscription for {user_id}: {e}")
+        return False
+
 @bot.message_handler(func=lambda message: message.text == "💰 Withdraw")
 def withdraw_request(message):
-    user_id = message.chat.id
+    user_id = message.from_user.id
 
     if not is_subscribed(user_id):  
          #يرجع للمنيو 
@@ -237,7 +266,7 @@ def withdraw_request(message):
 
 
 def process_withdraw_amount(message):
-    user_id = message.chat.id
+    user_id = message.from_user.id
     try:
         amount = float(message.text.strip())
         if amount <= 0:
@@ -308,9 +337,9 @@ def process_withdraw_amount(message):
     bot.send_message(user_id, "📱 Please enter your Vodafone Cash number:")
     bot.register_next_step_handler(message, lambda msg: process_withdraw_number(msg, amount))
 
-ADMIN_ID =  5808711396 #هعغيره برقم الادمن 
+ADMIN_ID =  [5808711396,1388747442]  #هعغيره برقم الادمن 
 def process_withdraw_number(message, amount):
-    user_id = message.chat.id
+    user_id = message.from_user.id
     phone_number = message.text.strip()
 
     if not phone_number.isdigit() or len(phone_number) != 11 or not phone_number.startswith("01"):
@@ -403,7 +432,7 @@ def show_balance(message):
 
 ################################################################################################################
 #admin 
-ADMINS = [5808711396]  # استبدل هذه القيم بـ user_id الخاص بالإدمن
+ADMINS = [5808711396,1388747442]  # استبدل هذه القيم بـ user_id الخاص بالإدمن
 
 @bot.message_handler(commands=['admin'])
 def admin_panel(message):
