@@ -130,7 +130,7 @@ def play_lucky_wheel(message):
         markup.row("🎰 Play", "📊 Show Balance")
         markup.row("🎟️ Invite Friends", "💰 Withdraw")
         # إرسال رابط صفحة العجلة مع الـ user_id
-        wheel_url = f"http://127.0.0.1:5000/spin?user_id={user_id}"
+        wheel_url = f"https://telebot-production-d931.up.railway.app/spin?user_id={user_id}"
         bot.send_message(user_id, f"🎡 Click the link below to spin the wheel!\n\n[🎰 Spin Now]({wheel_url})",
                          parse_mode="Markdown", reply_markup=markup)
     else:
